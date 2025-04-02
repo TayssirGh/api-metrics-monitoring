@@ -1,0 +1,6 @@
+sum(api_calls_per_user_total{endpoint="/protected"})
+sum by (user_id) (api_calls_per_user_total)
+sum by (user_id, endpoint) (api_calls_per_user_total)
+sum(api_calls_per_user_total{user_id="2"})
+sum(api_calls_per_user_total{endpoint="/protected"})
+rate(api_calls_per_user_total[5m])
