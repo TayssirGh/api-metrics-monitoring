@@ -1,35 +1,40 @@
 from datetime import datetime
 
-from pydantic import BaseModel
 from sqlalchemy import Integer, Column, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 
 from dal.database import Base
+
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String, unique=True, index=True)
+    email: Mapped[str] = mapped_column(String, unique=True, index=True)
+    api_key: Mapped[str | None] = mapped_column(String, unique=True, index=True, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    api_keys = relationship("APIKey", back_populates="owner")
-
-class APIKey(Base):
-    __tablename__ = "api_keys"
-
-    id = Column(Integer, primary_key=True, index=True)
-    key = Column(String, unique=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    created_at = Column(DateTime, default=datetime.now)
-    usage_count = Column(Integer, default=0)
-
-    owner = relationship("User", back_populates="api_keys")
+    api_usage: Mapped[list["APIMetrics"]] = relationship("APIMetrics", back_populates="owner")
 
 
+class APIMetrics(Base):
+    __tablename__ = "api_metrics"
 
-class UserCreate(BaseModel):
-    username: str
-    email: str
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    endpoint: Mapped[str] = mapped_column(String, index=True)
+    rows_fetched: Mapped[int] = mapped_column(Integer, default=0)
+    response_size: Mapped[int] = mapped_column(Integer, default=0)
+    status_code: Mapped[int] = mapped_column(Integer, default=200)
+
+    owner: Mapped["User"] = relationship("User", back_populates="api_usage")
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Column = Column(Integer, primary_key=True, index=True)
+    name: Column = Column(String, nullable=False)
+    price: Column = Column(Integer, nullable=False)
