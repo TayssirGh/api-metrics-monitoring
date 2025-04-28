@@ -1,0 +1,81 @@
+SELECT
+  date_trunc('hour', timestamp) AS time,
+  endpoint,
+  COUNT(*) AS api_call_count,
+  SUM(rows_fetched) AS total_rows_fetched
+FROM
+  api_metrics
+GROUP BY
+  time, endpoint
+ORDER BY
+  time;
+
+---
+  SELECT
+    gc.name AS "Commune",
+    COUNT(*) AS "Property Count"
+FROM
+    nn_user_property nup
+JOIN
+    nn_property_communes npc ON nup.property_id = npc.property_id
+JOIN
+    geo_commune gc ON npc.commune_code_id = gc.id_code
+JOIN
+    user_user u ON nup.user_id = u.id
+WHERE
+    u.email_address = '${__user.email}'
+GROUP BY
+    gc.name
+ORDER BY
+    "Property Count" DESC;
+
+---
+SELECT
+    d.name AS "nom du département",
+    SUM(gp.surface) / 10000.0 AS "surface totale en ha"
+FROM user_user u
+JOIN nn_user_property up ON u.id = up.user_id
+JOIN nn_property_plots pp ON up.property_id = pp.property_id
+JOIN geo_plot gp ON pp.plot_idu = gp.id_code_idu
+JOIN geo_commune c ON gp.commune_insee_code = c.id_code
+JOIN geo_department d ON c.department_code_id = d.id_code
+WHERE u.email_address = '${__user.email}'
+GROUP BY d.id_code, d.name
+ORDER BY "surface totale en ha" DESC;
+
+
+---
+WITH user_properties AS (
+    SELECT DISTINCT p.id
+    FROM user_user u
+    JOIN nn_user_property up ON u.id = up.user_id
+    JOIN user_property p ON p.id = up.property_id
+    WHERE u.email_address = '${__user.email}'
+)
+SELECT
+    d.name AS "nom du département",
+    COALESCE(ROUND(SUM(gp.surface)::numeric / 10000.0, 1), 0) AS "surface totale en ha"
+FROM geo_department d
+LEFT JOIN geo_commune c ON c.department_code_id = d.id_code
+LEFT JOIN nn_property_communes pc ON pc.commune_code_id = c.id_code
+LEFT JOIN user_properties  p ON p.id = pc.property_id
+LEFT JOIN nn_property_plots pp ON pp.property_id = p.id
+LEFT JOIN geo_plot gp ON gp.id_code_idu = pp.plot_idu
+LEFT JOIN geo_region r ON d.region_code_id = r.id_code
+WHERE
+
+    '${regions:csv}' = 'All'
+    OR r.name IN ('${regions:csv}')
+
+GROUP BY r.id_code, d.name
+ORDER BY "surface totale en ha" DESC;
+
+
+---
+SELECT
+    m.id || ' * ' || u.first_name AS alert_user
+FROM metrics_user_alert_sent m
+JOIN user_alert a ON a.id_request = m.alert_id
+JOIN user_request r ON r.id = a.id_request
+JOIN user_user u ON u.id = r.user_id
+ORDER BY m.id;
